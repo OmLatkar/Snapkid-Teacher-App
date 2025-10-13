@@ -5,11 +5,6 @@ const extra = Constants.expoConfig?.extra ?? (Constants as any).manifestExtra ??
 const { AWS_S3_BUCKET } = extra as Record<string, string>;
 import { Teacher } from '../types';
 
-const formatTimestamp = (d: Date): string => {
-  const pad = (n: number, w = 2) => String(n).padStart(w, '0');
-  return `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}_${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}${pad(d.getMilliseconds(),3)}`;
-};
-
 export const uploadToS3 = (
   image: Blob,
   teacherSchool: string,
@@ -29,11 +24,13 @@ export const uploadToS3 = (
       return;
     }
     
-    // Create a unique filename per spec: TeacherID_timestamp[_cnt]
-    const ts = formatTimestamp(new Date());
+    // Create a unique filename per spec:
+    // Single image: TeacherID_EpochTime (1 underscore)
+    // Bulk upload: TeacherID_EpochTime_Counter (2 underscores)
+    const epochTime = Date.now(); // Epoch time in milliseconds
     const idPart = String(teacherIdOrName);
-    const cnt = bulkIndex && bulkIndex > 0 ? `_${bulkIndex}` : '';
-    const filename = `${teacherSchool}/${teacherBranch}/${teacherClass}/${idPart}_${ts}${cnt}.jpg`;
+    const cnt = (bulkIndex !== undefined && bulkIndex > 0) ? `_${bulkIndex}` : '';
+    const filename = `${teacherSchool}/${teacherBranch}/${teacherClass}/${idPart}_${epochTime}${cnt}.jpg`;
     
     const params = {
       Bucket: AWS_S3_BUCKET,
