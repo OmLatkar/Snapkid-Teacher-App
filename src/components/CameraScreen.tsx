@@ -67,7 +67,7 @@ const CameraScreen: React.FC<CameraScreenProps> = ({ route }) => {
         });
 
         // Save photo info to SQLite database
-        await databaseManager.savePhoto(teacher.id, permanentPath, capturedAt);
+        await databaseManager.savePhoto(teacher.id, teacher.school, teacher.branch, teacher.class, permanentPath, capturedAt);
         
         Alert.alert('Success', 'Photo captured and saved locally! Use Bulk Upload to upload to S3.');
       } catch (error) {

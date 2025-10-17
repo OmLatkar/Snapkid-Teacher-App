@@ -2,7 +2,7 @@ import { Teacher } from '../types';
 
 export const teachers: Teacher[] = [
   { id: 1, name: "Aarav Sharma", mobile: "9000000001", school: "Greenwood High", branch: "North", class: "Class A1", otp: "111111", email: "aarav.sharma@greenwood.com" },
-  { id: 2, name: "Isha Verma", mobile: "9000000002", school: "Greenwood High", branch: "North", class: "Class A2", otp: "222222", email: "isha.verma@greenwood.com" },
+  { id: 2, name: "Isha Verma", mobile: "9000000002", school: "Greenwood High", branch: "North", class: "Class A1", otp: "222222", email: "isha.verma@greenwood.com" },
   { id: 3, name: "Rahul Nair", mobile: "9000000003", school: "Greenwood High", branch: "South", class: "Class B1", otp: "333333", email: "rahul.nair@greenwood.com" },
   { id: 4, name: "Sneha Rao", mobile: "9000000004", school: "Greenwood High", branch: "South", class: "Class B2", otp: "444444", email: "sneha.rao@greenwood.com" },
   { id: 5, name: "Kunal Patel", mobile: "9000000005", school: "Sunrise Public", branch: "East", class: "Class C1", otp: "555555", email: "kunal.patel@sunrise.com" },

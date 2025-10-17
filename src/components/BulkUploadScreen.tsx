@@ -39,7 +39,7 @@ const BulkUploadScreen: React.FC<BulkUploadScreenProps> = ({ route }) => {
     
     try {
       setIsLoading(true);
-      const unuploadedPhotos = await databaseManager.getUnuploadedPhotos(teacher.id);
+      const unuploadedPhotos = await databaseManager.getUnuploadedPhotosByClass(teacher.school, teacher.branch, teacher.class);
       setPhotos(unuploadedPhotos);
     } catch (error) {
       console.error('Error loading photos:', error);

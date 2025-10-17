@@ -3,6 +3,9 @@ import * as SQLite from 'expo-sqlite';
 export interface CapturedPhoto {
   id: number;
   teacherId: string;
+  school: string;
+  branch: string;
+  class: string;
   filePath: string;
   capturedAt: number; // Epoch timestamp when photo was captured
   uploaded: boolean; // Whether photo has been uploaded to S3
@@ -26,6 +29,9 @@ class DatabaseManager {
       CREATE TABLE IF NOT EXISTS captured_photos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         teacherId TEXT NOT NULL,
+        school TEXT NOT NULL,
+        branch TEXT NOT NULL,
+        class TEXT NOT NULL,
         filePath TEXT NOT NULL,
         capturedAt INTEGER NOT NULL,
         uploaded INTEGER DEFAULT 0,
@@ -34,15 +40,68 @@ class DatabaseManager {
     `;
 
     await db.execAsync(createTableSQL);
+    
+    // Check if we need to migrate the old schema
+    await this.migrateDatabase(db);
   }
 
-  async savePhoto(teacherId: string, filePath: string, capturedAt: number): Promise<number> {
+  private async migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
+    try {
+      // Check if the old schema exists (without school, branch, class columns)
+      const result = await db.getAllAsync("PRAGMA table_info(captured_photos)");
+      const columns = result.map((col: any) => col.name);
+      
+      if (!columns.includes('school')) {
+        console.log('Migrating database schema...');
+        
+        // Create a backup table with old data
+        await db.execAsync(`
+          CREATE TABLE captured_photos_backup AS SELECT * FROM captured_photos;
+        `);
+        
+        // Drop the old table
+        await db.execAsync(`DROP TABLE captured_photos;`);
+        
+        // Recreate with new schema
+        await db.execAsync(`
+          CREATE TABLE captured_photos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            teacherId TEXT NOT NULL,
+            school TEXT NOT NULL,
+            branch TEXT NOT NULL,
+            class TEXT NOT NULL,
+            filePath TEXT NOT NULL,
+            capturedAt INTEGER NOT NULL,
+            uploaded INTEGER DEFAULT 0,
+            createdAt INTEGER DEFAULT (strftime('%s', 'now') * 1000)
+          );
+        `);
+        
+        // Migrate data from backup (with default values for new columns)
+        await db.execAsync(`
+          INSERT INTO captured_photos (id, teacherId, school, branch, class, filePath, capturedAt, uploaded, createdAt)
+          SELECT id, teacherId, 'Unknown', 'Unknown', 'Unknown', filePath, capturedAt, uploaded, createdAt
+          FROM captured_photos_backup;
+        `);
+        
+        // Drop backup table
+        await db.execAsync(`DROP TABLE captured_photos_backup;`);
+        
+        console.log('Database migration completed');
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
+      // If migration fails, the table will be created fresh with the new schema
+    }
+  }
+
+  async savePhoto(teacherId: string, school: string, branch: string, className: string, filePath: string, capturedAt: number): Promise<number> {
     const db = await this.getDatabase();
     
     try {
       const result = await db.runAsync(
-        'INSERT INTO captured_photos (teacherId, filePath, capturedAt) VALUES (?, ?, ?)',
-        [teacherId, filePath, capturedAt]
+        'INSERT INTO captured_photos (teacherId, school, branch, class, filePath, capturedAt) VALUES (?, ?, ?, ?, ?, ?)',
+        [teacherId, school, branch, className, filePath, capturedAt]
       );
       return result.lastInsertRowId as number;
     } finally {
@@ -50,13 +109,13 @@ class DatabaseManager {
     }
   }
 
-  async getPhotosByTeacher(teacherId: string): Promise<CapturedPhoto[]> {
+  async getPhotosByClass(school: string, branch: string, className: string): Promise<CapturedPhoto[]> {
     const db = await this.getDatabase();
     
     try {
       const result = await db.getAllAsync(
-        'SELECT * FROM captured_photos WHERE teacherId = ? ORDER BY capturedAt DESC',
-        [teacherId]
+        'SELECT * FROM captured_photos WHERE school = ? AND branch = ? AND class = ? ORDER BY capturedAt DESC',
+        [school, branch, className]
       );
       return result as CapturedPhoto[];
     } finally {
@@ -64,13 +123,13 @@ class DatabaseManager {
     }
   }
 
-  async getUnuploadedPhotos(teacherId: string): Promise<CapturedPhoto[]> {
+  async getUnuploadedPhotosByClass(school: string, branch: string, className: string): Promise<CapturedPhoto[]> {
     const db = await this.getDatabase();
     
     try {
       const result = await db.getAllAsync(
-        'SELECT * FROM captured_photos WHERE teacherId = ? AND uploaded = 0 ORDER BY capturedAt DESC',
-        [teacherId]
+        'SELECT * FROM captured_photos WHERE school = ? AND branch = ? AND class = ? AND uploaded = 0 ORDER BY capturedAt DESC',
+        [school, branch, className]
       );
       return result as CapturedPhoto[];
     } finally {
