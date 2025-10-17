@@ -2,9 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { View, TouchableOpacity, Text, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as FileSystem from 'expo-file-system/legacy';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { RouteProp } from '@react-navigation/native';
-import { uploadToS3 } from '../utils/s3Upload';
+import { databaseManager } from '../utils/database';
 import { Teacher } from '../types';
 import { RootStackParamList } from '../navigation/AppNavigator';
 
@@ -17,7 +18,7 @@ interface CameraScreenProps {
 const CameraScreen: React.FC<CameraScreenProps> = ({ route }) => {
   const teacher = route?.params?.teacher as Teacher | undefined;
   const cameraRef = useRef<CameraView | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [permission, requestPermission] = useCameraPermissions();
   // Use string literals to avoid runtime undefined when CameraType constant is not exported
   const [type, setType] = useState<'back' | 'front'>('back');
@@ -27,13 +28,21 @@ const CameraScreen: React.FC<CameraScreenProps> = ({ route }) => {
       if (!permission || permission.status !== 'granted') {
         await requestPermission();
       }
+      // Initialize database
+      try {
+        await databaseManager.init();
+      } catch (error) {
+        console.error('Database initialization failed:', error);
+      }
     })();
   }, [permission, requestPermission]);
 
   const takePicture = async () => {
-    if (cameraRef.current && !isUploading) {
-      setIsUploading(true);
+    if (cameraRef.current && !isSaving && teacher) {
+      setIsSaving(true);
       try {
+        const capturedAt = Date.now(); // Epoch timestamp when photo was captured
+        
         const photo = await cameraRef.current.takePictureAsync({
           quality: 0.8,
           base64: false,
@@ -47,18 +56,25 @@ const CameraScreen: React.FC<CameraScreenProps> = ({ route }) => {
           { compress: 0.7, format: ImageManipulator.SaveFormat.JPEG }
         );
 
-        // Convert to blob for S3 upload
-        const response = await fetch(compressedPhoto.uri);
-        const blob = await response.blob();
+        // Create a permanent file path for the photo
+        const fileName = `photo_${teacher.id}_${capturedAt}.jpg`;
+        const permanentPath = `${FileSystem.documentDirectory}${fileName}`;
         
-        // Upload to S3
-        await uploadToS3(blob, teacher.school, teacher.branch, teacher.class, teacher.id);
-        Alert.alert('Success', 'Photo uploaded successfully to your class folder!');
+        // Copy the compressed photo to permanent storage using legacy API
+        await FileSystem.copyAsync({
+          from: compressedPhoto.uri,
+          to: permanentPath
+        });
+
+        // Save photo info to SQLite database
+        await databaseManager.savePhoto(teacher.id, permanentPath, capturedAt);
+        
+        Alert.alert('Success', 'Photo captured and saved locally! Use Bulk Upload to upload to S3.');
       } catch (error) {
-        console.error('Upload Error:', error);
-        Alert.alert('Error', 'Failed to upload photo. Please check your AWS configuration.');
+        console.error('Save Error:', error);
+        Alert.alert('Error', 'Failed to save photo. Please try again.');
       } finally {
-        setIsUploading(false);
+        setIsSaving(false);
       }
     }
   };
@@ -88,10 +104,10 @@ const CameraScreen: React.FC<CameraScreenProps> = ({ route }) => {
           
           <TouchableOpacity
             onPress={takePicture}
-            disabled={isUploading}
+            disabled={isSaving}
             style={styles.captureButton}
           >
-            {isUploading ? (
+            {isSaving ? (
               <ActivityIndicator size="small" color="#fff" />
             ) : (
               <View style={styles.captureInner} />

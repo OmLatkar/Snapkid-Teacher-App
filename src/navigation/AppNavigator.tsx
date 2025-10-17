@@ -3,6 +3,7 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import HomeScreen from '../components/HomeScreen';
 import CameraScreen from '../components/CameraScreen';
+import BulkUploadScreen from '../components/BulkUploadScreen';
 import ProfileScreen from '../components/ProfileScreen';
 import { Teacher } from '../types';
 import { RouteProp } from '@react-navigation/native';
@@ -15,6 +16,7 @@ export type RootStackParamList = {
 export type TabParamList = {
   Home: { teacher: Teacher };
   Camera: { teacher: Teacher };
+  BulkUpload: { teacher: Teacher };
   Profile: { teacher: Teacher };
 };
 
@@ -34,6 +36,8 @@ const TabNavigator: React.FC<{ route: MainRouteProp }> = ({ route }) => {
             iconName = 'home';
           } else if (route.name === 'Camera') {
             iconName = 'camera';
+          } else if (route.name === 'BulkUpload') {
+            iconName = 'cloud-upload';
           } else if (route.name === 'Profile') {
             iconName = 'person';
           }
@@ -47,6 +51,7 @@ const TabNavigator: React.FC<{ route: MainRouteProp }> = ({ route }) => {
     >
       <Tab.Screen name="Home" component={HomeScreen} initialParams={{ teacher: teacherParam }} />
       <Tab.Screen name="Camera" component={CameraScreen} initialParams={{ teacher: teacherParam }} />
+      <Tab.Screen name="BulkUpload" component={BulkUploadScreen} initialParams={{ teacher: teacherParam }} />
       <Tab.Screen name="Profile" component={ProfileScreen} initialParams={{ teacher: teacherParam }} />
     </Tab.Navigator>
   );

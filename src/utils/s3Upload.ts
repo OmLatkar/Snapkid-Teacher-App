@@ -11,7 +11,8 @@ export const uploadToS3 = (
   teacherBranch: string,
   teacherClass: string,
   teacherIdOrName: string | number,
-  bulkIndex?: number
+  bulkIndex?: number,
+  capturedTimestamp?: number
 ): Promise<any> => {
   return new Promise((resolve, reject) => {
     // Check if AWS is configured
@@ -27,7 +28,8 @@ export const uploadToS3 = (
     // Create a unique filename per spec:
     // Single image: TeacherID_EpochTime (1 underscore)
     // Bulk upload: TeacherID_EpochTime_Counter (2 underscores)
-    const epochTime = Date.now(); // Epoch time in milliseconds
+    // Use captured timestamp if provided, otherwise use current time
+    const epochTime = capturedTimestamp || Date.now();
     const idPart = String(teacherIdOrName);
     const cnt = (bulkIndex !== undefined && bulkIndex > 0) ? `_${bulkIndex}` : '';
     const filename = `${teacherSchool}/${teacherBranch}/${teacherClass}/${idPart}_${epochTime}${cnt}.jpg`;
