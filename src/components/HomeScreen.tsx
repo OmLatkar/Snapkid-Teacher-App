@@ -1,10 +1,8 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Alert } from 'react-native';
-import { RouteProp } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
+import { RouteProp, useNavigation } from '@react-navigation/native';
 import { Teacher } from '../types';
-import { RootStackParamList } from '../navigation/AppNavigator';
-import { uploadToS3 } from '../utils/s3Upload';
+import { RootStackParamList, HomeStackParamList } from '../navigation/AppNavigator';
 
 type HomeScreenRouteProp = RouteProp<RootStackParamList, 'Main'>;
 
@@ -14,50 +12,10 @@ interface HomeScreenProps {
 
 const HomeScreen: React.FC<HomeScreenProps> = ({ route }) => {
   const teacher = route?.params?.teacher as Teacher | undefined;
+  const navigation = useNavigation<any>();
 
-  const handleBulkUpload = async () => {
-    try {
-      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (permission.status !== 'granted') {
-        Alert.alert('Permission required', 'Please allow gallery access to select photos.');
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: true,
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        quality: 0.8,
-        selectionLimit: 0,
-      });
-
-      if (result.canceled) return;
-
-      const assets = (result as any).assets as Array<{ uri: string }>;
-      if (!assets || assets.length === 0) return;
-
-      if (!teacher) {
-        Alert.alert('Error', 'No teacher context found. Please re-login.');
-        return;
-      }
-
-      let successCount = 0;
-      for (let i = 0; i < assets.length; i++) {
-        const asset = assets[i];
-        try {
-          const response = await fetch(asset.uri);
-          const blob = await response.blob();
-          await uploadToS3(blob, teacher.school, teacher.branch, teacher.class, teacher.id, i + 1);
-          successCount += 1;
-        } catch (e) {
-          console.warn('Bulk upload failed for', asset.uri, e);
-        }
-      }
-
-      Alert.alert('Bulk Upload', `Uploaded ${successCount} of ${assets.length} photos.`);
-    } catch (error) {
-      console.error('Bulk upload error:', error);
-      Alert.alert('Error', 'Failed to complete bulk upload.');
-    }
+  const handleBulkUpload = () => {
+    navigation.navigate('BulkUpload', { teacher });
   };
   
   return (
