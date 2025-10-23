@@ -46,9 +46,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY,
     AWS_REGION: process.env.AWS_REGION,
     AWS_S3_BUCKET: process.env.AWS_S3_BUCKET,
-    APP_ENV: process.env.APP_ENV || 'development',
-    eas: {
-      projectId: "your-project-id-here"
-    }
+    APP_ENV: process.env.APP_ENV || 'development'
   }
 });

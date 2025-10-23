@@ -11,7 +11,7 @@ import {
   SafeAreaView,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
-import { RouteProp } from '@react-navigation/native';
+import { RouteProp, useFocusEffect } from '@react-navigation/native';
 import { databaseManager, CapturedPhoto } from '../utils/database';
 import { uploadToS3 } from '../utils/s3Upload';
 import { Teacher } from '../types';
@@ -33,6 +33,13 @@ const BulkUploadScreen: React.FC<BulkUploadScreenProps> = ({ route }) => {
   useEffect(() => {
     loadPhotos();
   }, []);
+
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      loadPhotos();
+    }, [])
+  );
 
   const loadPhotos = async () => {
     if (!teacher) return;
